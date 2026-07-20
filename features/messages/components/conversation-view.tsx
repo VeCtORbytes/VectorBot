@@ -1,11 +1,17 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport } from "ai";
+import type { UIMessage } from "ai";
 import { useChat } from "@ai-sdk/react";
+import { queryKeys } from "@/lib/query-keys";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useMessages } from "@/features/messages/hooks/use-messages";
 import { ChatComposer } from "./chat-composer";
 import { ChatEmpty } from "./chat-empty";
 import { ChatMessages } from "./chat-messages";
+
+type MessagePart = UIMessage["parts"][number];
 
 export function ConversationView({
   conversationId,
@@ -14,8 +20,21 @@ export function ConversationView({
   conversationId: string;
   title: string;
 }) {
+  const queryClient = useQueryClient();
+  const { data: dbMessages, isLoading } = useMessages(conversationId);
+
+  const initialMessages: UIMessage[] = (dbMessages ?? []).map((msg) => ({
+    id: msg.id,
+    role: msg.role.toLowerCase() as "user" | "assistant" | "system",
+    parts:
+      Array.isArray(msg.parts) && (msg.parts as any[]).length > 0
+        ? (msg.parts as unknown as MessagePart[])
+        : [{ type: "text", text: msg.content }],
+  }));
+
   const { messages, sendMessage, status } = useChat({
     id: conversationId,
+    messages: initialMessages.length > 0 ? initialMessages : undefined,
     transport: new DefaultChatTransport({
       api: "/api/chat",
       prepareSendMessagesRequest({ messages, messageId }) {
@@ -28,12 +47,21 @@ export function ConversationView({
         };
       },
     }),
+    onFinish: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.conversations.all,
+      });
+    },
   });
 
   const hasMessages = messages.length > 0;
 
   function handleSend(text: string) {
     sendMessage({ text });
+  }
+
+  if (isLoading) {
+    return null;
   }
 
   return (
