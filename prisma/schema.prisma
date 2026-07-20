@@ -13,4 +13,57 @@ model User {
   email     String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  conversations Conversation[]
+}
+
+model Conversation {
+  id            String   @id @default(cuid())
+  userId        String
+  title         String   @default("New Chat")
+  model         String
+  systemPrompt  String?
+  isPinned      Boolean  @default(false)
+  isArchived    Boolean  @default(false)
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId, lastMessageAt(sort: Desc)])
+  @@index([userId, isPinned, lastMessageAt(sort: Desc)])
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+}
+
+enum MessageStatus {
+  PENDING
+  COMPLETE
+  ERROR
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  status         MessageStatus @default(COMPLETE)
+  content        String
+  parts          Json?
+  metadata       Json?
+  parentId       String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  parent       Message?      @relation("MessageBranches", fields: [parentId], references: [id])
+  children     Message[]     @relation("MessageBranches")
+
+  @@index([conversationId, createdAt(sort: Asc)])
 }
