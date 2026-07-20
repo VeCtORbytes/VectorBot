@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { queryKeys } from "@/lib/query-keys";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ModelSelector } from "@/components/ai-elements/model-selector";
+import { ExportMenu } from "@/components/ai-elements/export-menu";
 import { useMessages } from "@/features/messages/hooks/use-messages";
 import { ChatComposer } from "./chat-composer";
 import { ChatEmpty } from "./chat-empty";
@@ -114,6 +115,14 @@ export function ConversationView({
               Branch
             </span>
           )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <ExportMenu
+            conversationId={conversationId}
+            title={title}
+            messages={messages}
+          />
         </div>
       </header>
 
