@@ -4,6 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
 import { useChat } from "@ai-sdk/react";
+import { GitFork } from "lucide-react";
+import { toast } from "sonner";
 import { queryKeys } from "@/lib/query-keys";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useMessages } from "@/features/messages/hooks/use-messages";
@@ -12,60 +14,32 @@ import { ChatEmpty } from "./chat-empty";
 import { ChatMessages } from "./chat-messages";
 
 type MessagePart = UIMessage["parts"][number];
-type DbMessages = NonNullable<ReturnType<typeof useMessages>["data"]>;
-
-function toUIMessages(rows: DbMessages): UIMessage[] {
-  return rows.map((msg) => ({
-    id: msg.id,
-    role: msg.role.toLowerCase() as "user" | "assistant" | "system",
-    parts:
-      Array.isArray(msg.parts) && (msg.parts as unknown[]).length > 0
-        ? (msg.parts as unknown as MessagePart[])
-        : [{ type: "text", text: msg.content }],
-  }));
-}
 
 export function ConversationView({
   conversationId,
   title,
+  initialMessages: initialMessagesProp,
 }: {
   conversationId: string;
   title: string;
-}) {
-  const { data: dbMessages, isLoading } = useMessages(conversationId);
-
-  return (
-    <div className="flex h-svh flex-col overflow-hidden">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
-        <SidebarTrigger />
-        <h1 className="truncate text-sm font-medium">{title}</h1>
-      </header>
-
-      {isLoading ? (
-        <div className="flex flex-1 flex-col overflow-y-auto" />
-      ) : (
-        // Mount the chat only once saved messages are loaded, keyed by
-        // conversation id. useChat reads `messages` only when its Chat instance
-        // is created (on mount or id change) — so mounting before the history
-        // is ready would leave the chat permanently empty.
-        <ChatSession
-          key={conversationId}
-          conversationId={conversationId}
-          initialMessages={toUIMessages(dbMessages ?? [])}
-        />
-      )}
-    </div>
-  );
-}
-
-function ChatSession({
-  conversationId,
-  initialMessages,
-}: {
-  conversationId: string;
-  initialMessages: UIMessage[];
+  initialMessages?: UIMessage[];
 }) {
   const queryClient = useQueryClient();
+  const { data: dbMessages, isLoading } = useMessages(conversationId);
+
+  const fallbackMessages: UIMessage[] = (dbMessages ?? []).map((msg) => ({
+    id: msg.id,
+    role: msg.role.toLowerCase() as "user" | "assistant" | "system",
+    parts:
+      Array.isArray(msg.parts) && (msg.parts as any[]).length > 0
+        ? (msg.parts as unknown as MessagePart[])
+        : [{ type: "text", text: msg.content }],
+  }));
+
+  const initialMessages =
+    initialMessagesProp && initialMessagesProp.length > 0
+      ? initialMessagesProp
+      : fallbackMessages;
 
   const { messages, sendMessage, status } = useChat({
     id: conversationId,
@@ -83,28 +57,48 @@ function ChatSession({
       },
     }),
     onFinish: () => {
-      // Refresh the sidebar (title/order) and the persisted message cache so
-      // navigating back to this chat shows the newly saved reply.
       queryClient.invalidateQueries({
         queryKey: queryKeys.conversations.all,
       });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.messages.byConversation(conversationId),
-      });
+    },
+    onError: (error) => {
+      toast.error(error.message || "An unexpected error occurred");
     },
   });
 
+  const isBranch = title.startsWith("Branch:");
   const hasMessages = messages.length > 0;
 
   function handleSend(text: string) {
     sendMessage({ text });
   }
 
+  if (isLoading && (!initialMessages || initialMessages.length === 0)) {
+    return null;
+  }
+
   return (
-    <>
+    <div className="flex h-svh flex-col overflow-hidden">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b px-3">
+        <div className="flex items-center gap-2 truncate">
+          <SidebarTrigger />
+          <h1 className="truncate text-sm font-medium">{title}</h1>
+          {isBranch && (
+            <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+              <GitFork className="size-3" />
+              Branch
+            </span>
+          )}
+        </div>
+      </header>
+
       <div className="flex flex-1 flex-col overflow-y-auto">
         {hasMessages ? (
-          <ChatMessages messages={messages} status={status} />
+          <ChatMessages
+            conversationId={conversationId}
+            messages={messages}
+            status={status}
+          />
         ) : (
           <ChatEmpty />
         )}
@@ -114,6 +108,6 @@ function ChatSession({
         onSend={handleSend}
         isSending={status === "submitted" || status === "streaming"}
       />
-    </>
+    </div>
   );
 }

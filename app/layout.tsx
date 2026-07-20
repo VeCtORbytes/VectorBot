@@ -25,8 +25,8 @@ const ibmPlexSans = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "ChatGpt",
-  description: "Advanced GPT client",
+  title: "ChaiGPT",
+  description: "Chat with ChaiGPT",
 };
 
 export default function RootLayout({

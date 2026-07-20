@@ -3,6 +3,7 @@ import {
   convertToModelMessages,
   createIdGenerator,
   createUIMessageStreamResponse,
+  isStepCount,
   streamText,
   UIMessage,
 } from "ai";
@@ -13,6 +14,7 @@ import {
   getChatModel,
   loadChatMessages,
   saveChatMessages,
+  webSearchTool,
 } from "@/features/ai";
 
 export async function POST(req: Request) {
@@ -52,7 +54,11 @@ export async function POST(req: Request) {
     userMessageToSave &&
     !existingMessages.some((em) => em.id === userMessageToSave.id)
   ) {
-    await saveChatMessages(conversationId, [userMessageToSave]);
+    try {
+      await saveChatMessages(conversationId, [userMessageToSave]);
+    } catch (error) {
+      console.error("Failed to save user message:", error);
+    }
   }
 
   const updatedMessages = await loadChatMessages(conversationId);
@@ -65,6 +71,10 @@ export async function POST(req: Request) {
     model: chatModel,
     system: conversation.systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
     messages: await convertToModelMessages(allMessages),
+    tools: {
+      webSearch: webSearchTool,
+    },
+    stopWhen: isStepCount(5),
   });
 
   result.consumeStream();
@@ -73,7 +83,13 @@ export async function POST(req: Request) {
     stream: result.toUIMessageStream({
       generateMessageId: createIdGenerator({ prefix: "msg", size: 16 }),
       onEnd: async ({ messages }) => {
-        await saveChatMessages(conversationId, messages, { updateTitle: false });
+        try {
+          await saveChatMessages(conversationId, messages, {
+            updateTitle: false,
+          });
+        } catch (error) {
+          console.error("Failed to save assistant chat messages:", error);
+        }
       },
     }),
   });

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getConversation } from "@/features/conversation";
+import { loadChatMessages } from "@/features/ai";
 import { ConversationView } from "@/features/messages/components/conversation-view";
 
 export default async function ConversationPage({
@@ -16,10 +17,14 @@ export default async function ConversationPage({
     notFound();
   }
 
+  const initialMessages = await loadChatMessages(conversation.id);
+
   return (
     <ConversationView
+      key={conversation.id}
       conversationId={conversation.id}
       title={conversation.title}
+      initialMessages={initialMessages}
     />
   );
 }
