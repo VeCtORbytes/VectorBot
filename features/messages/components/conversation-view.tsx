@@ -1,11 +1,8 @@
 "use client";
 
-import { MessageRole } from "@/lib/generated/prisma/enums";
+import { DefaultChatTransport } from "ai";
+import { useChat } from "@ai-sdk/react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import {
-  useCreateMessage,
-  useMessages,
-} from "@/features/messages/hooks/use-messages";
 import { ChatComposer } from "./chat-composer";
 import { ChatEmpty } from "./chat-empty";
 import { ChatMessages } from "./chat-messages";
@@ -17,17 +14,26 @@ export function ConversationView({
   conversationId: string;
   title: string;
 }) {
-  const { data: messages, isLoading } = useMessages(conversationId);
-  const createMessage = useCreateMessage(conversationId);
+  const { messages, sendMessage, status } = useChat({
+    id: conversationId,
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      prepareSendMessagesRequest({ messages, messageId }) {
+        return {
+          body: {
+            conversationId,
+            messages,
+            messageId,
+          },
+        };
+      },
+    }),
+  });
 
-  const hasMessages = (messages?.length ?? 0) > 0;
+  const hasMessages = messages.length > 0;
 
   function handleSend(text: string) {
-    createMessage.mutate({
-      conversationId,
-      role: MessageRole.USER,
-      content: text,
-    });
+    sendMessage({ text });
   }
 
   return (
@@ -38,14 +44,17 @@ export function ConversationView({
       </header>
 
       <div className="flex flex-1 flex-col overflow-y-auto">
-        {isLoading ? null : hasMessages ? (
-          <ChatMessages messages={messages ?? []} />
+        {hasMessages ? (
+          <ChatMessages messages={messages} status={status} />
         ) : (
           <ChatEmpty />
         )}
       </div>
 
-      <ChatComposer onSend={handleSend} isSending={createMessage.isPending} />
+      <ChatComposer
+        onSend={handleSend}
+        isSending={status === "submitted" || status === "streaming"}
+      />
     </div>
   );
 }

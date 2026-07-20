@@ -1,4 +1,5 @@
 import { Streamdown } from "streamdown";
+import { code } from "@streamdown/code";
 import { cn } from "@/lib/utils";
 
 type MessageRole = "user" | "assistant";
@@ -45,7 +46,7 @@ export function MessageContent({
   );
 }
 
-/** Renders assistant markdown (streaming-safe) via Streamdown. */
+/** Renders assistant markdown (streaming-safe) via Streamdown + @streamdown/code plugin. */
 export function MessageResponse({
   children,
   className,
@@ -55,6 +56,7 @@ export function MessageResponse({
 }) {
   return (
     <Streamdown
+      plugins={{ code }}
       className={cn(
         "prose prose-sm max-w-none dark:prose-invert [&_pre]:overflow-x-auto",
         className
