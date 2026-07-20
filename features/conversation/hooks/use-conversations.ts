@@ -27,7 +27,7 @@ export function useCreateConversation() {
       createConversation(input),
     onSuccess: (conversation) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations.all });
-      router.push(`/chat/${conversation.id}`);
+      router.push(`/c/${conversation.id}`);
     },
     onError: () => {
       toast.error("Failed to create conversation");

@@ -73,7 +73,7 @@ export async function updateConversation(
   });
 
   revalidatePath("/");
-  revalidatePath(`/chat/${conversationId}`);
+  revalidatePath(`/c/${conversationId}`);
 
   return conversation;
 }
