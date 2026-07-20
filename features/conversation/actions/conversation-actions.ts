@@ -62,7 +62,12 @@ export async function createConversation(input?: {
 
 export async function updateConversation(
   conversationId: string,
-  data: { title?: string; isPinned?: boolean; isArchived?: boolean }
+  data: {
+    title?: string;
+    model?: string;
+    isPinned?: boolean;
+    isArchived?: boolean;
+  }
 ) {
   const user = await requireUser();
   await assertOwnsConversation(conversationId, user.id);
@@ -82,6 +87,7 @@ export async function deleteConversation(conversationId: string) {
   const user = await requireUser();
   await assertOwnsConversation(conversationId, user.id);
 
+  await db.message.deleteMany({ where: { conversationId } });
   await db.conversation.delete({ where: { id: conversationId } });
 
   revalidatePath("/");

@@ -10,7 +10,6 @@ export default async function ConversationPage({
 }) {
   const { id } = await params;
 
-  // getConversation throws if the chat isn't owned by the current user.
   const conversation = await getConversation(id).catch(() => null);
 
   if (!conversation) {
@@ -24,6 +23,7 @@ export default async function ConversationPage({
       key={conversation.id}
       conversationId={conversation.id}
       title={conversation.title}
+      model={conversation.model}
       initialMessages={initialMessages}
     />
   );
