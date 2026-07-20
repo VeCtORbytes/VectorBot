@@ -1,4 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
+import { onBoard } from "@/features/auth";
+import { ChatShell } from "@/features/conversation/components/chat-shell";
 
 export default async function RootGroupLayout({
   children,
@@ -6,6 +8,7 @@ export default async function RootGroupLayout({
   children: React.ReactNode;
 }>) {
   await auth.protect();
+  await onBoard();
 
-  return <>{children}</>;
+  return <ChatShell>{children}</ChatShell>;
 }
