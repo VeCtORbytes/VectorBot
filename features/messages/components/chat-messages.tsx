@@ -1,6 +1,7 @@
 "use client";
 
 import type { UIMessage } from "ai";
+import { FileText } from "lucide-react";
 import { Loader } from "@/components/ai-elements/loader";
 import {
   Message,
@@ -45,6 +46,41 @@ export function ChatMessages({
                         <MessageResponse key={index}>{part.text}</MessageResponse>
                       ) : (
                         <span key={index}>{part.text}</span>
+                      );
+                    }
+
+                    if (part.type === "file") {
+                      const filePart = part as any;
+                      const isImage =
+                        filePart.mediaType?.startsWith("image/") ||
+                        (typeof filePart.url === "string" &&
+                          filePart.url.startsWith("data:image/"));
+
+                      if (isImage) {
+                        return (
+                          <div
+                            key={index}
+                            className="my-1.5 overflow-hidden rounded-xl border border-border/80 bg-background/50"
+                          >
+                            <img
+                              src={filePart.url}
+                              alt={filePart.filename ?? "Uploaded image"}
+                              className="max-h-64 max-w-xs object-contain rounded-lg"
+                            />
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={index}
+                          className="my-1.5 flex items-center gap-2 rounded-lg border border-border/80 bg-muted/50 px-3 py-2 text-xs font-medium"
+                        >
+                          <FileText className="size-4 text-primary shrink-0" />
+                          <span className="truncate max-w-48 font-semibold">
+                            {filePart.filename ?? "Attachment"}
+                          </span>
+                        </div>
                       );
                     }
 

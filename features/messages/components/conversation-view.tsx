@@ -8,6 +8,7 @@ import { GitFork } from "lucide-react";
 import { toast } from "sonner";
 import { queryKeys } from "@/lib/query-keys";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ModelSelector } from "@/components/ai-elements/model-selector";
 import { useMessages } from "@/features/messages/hooks/use-messages";
 import { ChatComposer } from "./chat-composer";
 import { ChatEmpty } from "./chat-empty";
@@ -18,10 +19,12 @@ type MessagePart = UIMessage["parts"][number];
 export function ConversationView({
   conversationId,
   title,
+  model = "gpt-4o-mini",
   initialMessages: initialMessagesProp,
 }: {
   conversationId: string;
   title: string;
+  model?: string;
   initialMessages?: UIMessage[];
 }) {
   const queryClient = useQueryClient();
@@ -52,6 +55,7 @@ export function ConversationView({
             conversationId,
             messages,
             messageId,
+            model,
           },
         };
       },
@@ -69,8 +73,23 @@ export function ConversationView({
   const isBranch = title.startsWith("Branch:");
   const hasMessages = messages.length > 0;
 
-  function handleSend(text: string) {
-    sendMessage({ text });
+  function handleSend(
+    text: string,
+    attachments?: { name: string; contentType: string; url: string }[]
+  ) {
+    if (attachments && attachments.length > 0) {
+      sendMessage({
+        text,
+        files: attachments.map((att) => ({
+          type: "file" as const,
+          mediaType: att.contentType,
+          url: att.url,
+          filename: att.name,
+        })),
+      });
+    } else {
+      sendMessage({ text });
+    }
   }
 
   if (isLoading && (!initialMessages || initialMessages.length === 0)) {
@@ -82,9 +101,15 @@ export function ConversationView({
       <header className="flex h-12 shrink-0 items-center justify-between border-b px-3">
         <div className="flex items-center gap-2 truncate">
           <SidebarTrigger />
-          <h1 className="truncate text-sm font-medium">{title}</h1>
+          <ModelSelector
+            conversationId={conversationId}
+            currentModelId={model}
+          />
+          <h1 className="truncate text-sm font-medium text-muted-foreground">
+            {title}
+          </h1>
           {isBranch && (
-            <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+            <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary shrink-0">
               <GitFork className="size-3" />
               Branch
             </span>
