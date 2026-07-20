@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getConversation } from "@/features/conversation";
-import { loadChatMessages } from "@/features/ai";
+import { loadChatMessages } from "@/features/ai/actions/chat-store";
 import { ConversationView } from "@/features/messages/components/conversation-view";
 
 export default async function ConversationPage({

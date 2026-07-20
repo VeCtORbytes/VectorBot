@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AVAILABLE_MODELS, type ModelOption } from "@/features/ai";
+import { AVAILABLE_MODELS, type ModelOption } from "@/features/ai/utils/models";
 import { useUpdateConversation } from "@/features/conversation/hooks/use-conversations";
 
 export function ModelSelector({

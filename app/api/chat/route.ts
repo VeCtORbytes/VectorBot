@@ -9,13 +9,8 @@ import {
 } from "ai";
 import { db } from "@/lib/db";
 import { requireUser } from "@/features/auth";
-import {
-  DEFAULT_SYSTEM_PROMPT,
-  getChatModel,
-  loadChatMessages,
-  saveChatMessages,
-  webSearchTool,
-} from "@/features/ai";
+import { DEFAULT_SYSTEM_PROMPT, getChatModel, webSearchTool } from "@/features/ai";
+import { loadChatMessages, saveChatMessages } from "@/features/ai/actions/chat-store";
 
 export async function POST(req: Request) {
   await auth.protect();

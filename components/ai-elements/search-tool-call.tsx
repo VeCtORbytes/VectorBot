@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, ExternalLink, Globe, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { WebSearchResult, SearchResultItem } from "@/features/ai";
+import type { WebSearchResult, SearchResultItem } from "@/features/ai/tools/web-search";
 
 export interface SearchToolCallProps {
   query?: string;
