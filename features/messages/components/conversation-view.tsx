@@ -134,7 +134,7 @@ export function ConversationView({
             status={status}
           />
         ) : (
-          <ChatEmpty />
+          <ChatEmpty onSelectPrompt={handleSend} />
         )}
       </div>
 
