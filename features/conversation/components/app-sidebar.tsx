@@ -1,11 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
-import { UserButton } from "@clerk/nextjs";
-import { Ellipsis, Moon, Pencil, Pin, PinOff, Plus, Sun, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useParams, useRouter } from "next/navigation";
+import { UserButton, useUser } from "@clerk/nextjs";
+import {
+  Check,
+  Ellipsis,
+  Pin,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,34 +39,39 @@ import {
   useCreateConversation,
   useDeleteConversation,
   useUpdateConversation,
-} from "@/features/conversation/hooks/use-conversations";
+} from "../hooks/use-conversations";
+import { Button } from "@/components/ui/button";
 
-type Conversation = NonNullable<
-  ReturnType<typeof useConversations>["data"]
->[number];
-
-function activeIdFromPathname(pathname: string) {
-  return pathname.startsWith("/c/") ? pathname.slice("/c/".length) : undefined;
-}
-
-function ChatItem({
+function ConversationItem({
   conversation,
-  activeId,
 }: {
-  conversation: Conversation;
-  activeId?: string;
+  conversation: {
+    id: string;
+    title: string;
+    isPinned: boolean;
+    isArchived: boolean;
+  };
 }) {
-  const updateConversation = useUpdateConversation();
-  const deleteConversation = useDeleteConversation(activeId);
+  const params = useParams();
+  const router = useRouter();
+  const currentId = params?.id as string | undefined;
+  const isActive = currentId === conversation.id;
 
-  function handleRename() {
-    const title = window.prompt("Rename conversation", conversation.title);
-    if (title && title.trim() && title.trim() !== conversation.title) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [titleInput, setTitleInput] = useState(conversation.title);
+
+  const updateConversation = useUpdateConversation();
+  const deleteConversation = useDeleteConversation();
+
+  function handleSaveRename() {
+    const trimmed = titleInput.trim();
+    if (trimmed && trimmed !== conversation.title) {
       updateConversation.mutate({
         id: conversation.id,
-        data: { title: title.trim() },
+        data: { title: trimmed },
       });
     }
+    setIsEditing(false);
   }
 
   function handleTogglePin() {
@@ -68,18 +82,47 @@ function ChatItem({
   }
 
   function handleDelete() {
-    deleteConversation.mutate(conversation.id);
+    deleteConversation.mutate(conversation.id, {
+      onSuccess: () => {
+        if (isActive) {
+          router.push("/");
+        }
+      },
+    });
   }
 
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
-        isActive={conversation.id === activeId}
-        tooltip={conversation.title}
-        render={<Link href={`/c/${conversation.id}`} />}
+        isActive={isActive}
+        className={cn(conversation.isPinned && "font-medium")}
       >
-        {conversation.isPinned && <Pin className="text-muted-foreground" />}
-        <span className="truncate">{conversation.title}</span>
+        <Link href={`/c/${conversation.id}`} className="w-full truncate">
+          {isEditing ? (
+            <div className="flex w-full items-center gap-1">
+              <input
+                type="text"
+                value={titleInput}
+                onChange={(e) => setTitleInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveRename();
+                  if (e.key === "Escape") setIsEditing(false);
+                }}
+                className="w-full rounded bg-background px-1 py-0.5 text-xs border focus:outline-none"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleSaveRename}
+                className="p-0.5 text-muted-foreground hover:text-foreground"
+              >
+                <Check className="size-3" />
+              </button>
+            </div>
+          ) : (
+            <span className="truncate">{conversation.title}</span>
+          )}
+        </Link>
       </SidebarMenuButton>
 
       <DropdownMenu>
@@ -87,23 +130,28 @@ function ChatItem({
           render={
             <SidebarMenuAction showOnHover>
               <Ellipsis />
-              <span className="sr-only">More</span>
             </SidebarMenuAction>
           }
         />
         <DropdownMenuContent side="right" align="start">
-          <DropdownMenuItem onClick={handleRename}>
-            <Pencil />
-            Rename
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleTogglePin}>
-            {conversation.isPinned ? <PinOff /> : <Pin />}
-            {conversation.isPinned ? "Unpin" : "Pin"}
+            <Pin className="mr-2 size-4" />
+            <span>{conversation.isPinned ? "Unpin" : "Pin"}</span>
           </DropdownMenuItem>
+
+          <DropdownMenuItem onClick={() => setIsEditing(true)}>
+            <Sparkles className="mr-2 size-4" />
+            <span>Rename</span>
+          </DropdownMenuItem>
+
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onClick={handleDelete}>
-            <Trash2 />
-            Delete
+
+          <DropdownMenuItem
+            onClick={handleDelete}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="mr-2 size-4" />
+            <span>Delete</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -112,56 +160,48 @@ function ChatItem({
 }
 
 function ChatList() {
-  const pathname = usePathname();
-  const activeId = activeIdFromPathname(pathname);
   const { data: conversations, isLoading } = useConversations();
 
   if (isLoading) {
     return (
       <SidebarMenu>
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: 5 }).map((_, i) => (
           <SidebarMenuItem key={i}>
-            <SidebarMenuSkeleton />
+            <SidebarMenuSkeleton showIcon />
           </SidebarMenuItem>
         ))}
       </SidebarMenu>
     );
   }
 
-  if (!conversations?.length) {
+  if (!conversations || conversations.length === 0) {
     return (
-      <p className="px-2 py-1.5 text-sm text-muted-foreground">No chats yet</p>
+      <div className="px-2 py-4 text-center text-xs text-muted-foreground">
+        No conversations yet
+      </div>
     );
   }
 
   return (
     <SidebarMenu>
-      {conversations.map((conversation) => (
-        <ChatItem
-          key={conversation.id}
-          conversation={conversation}
-          activeId={activeId}
-        />
+      {conversations.map((c) => (
+        <ConversationItem key={c.id} conversation={c} />
       ))}
     </SidebarMenu>
   );
 }
 
 function SidebarFooterMenu() {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { user } = useUser();
 
   return (
-    <div className="flex items-center justify-between gap-2 px-1 py-1">
-      <UserButton />
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Toggle theme"
-        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      >
-        <Sun className="hidden dark:block" />
-        <Moon className="block dark:hidden" />
-      </Button>
+    <div className="flex items-center justify-between p-2">
+      <div className="flex items-center gap-2 overflow-hidden">
+        <UserButton />
+        <span className="truncate text-xs font-medium text-sidebar-foreground">
+          {user?.fullName || user?.username || "User"}
+        </span>
+      </div>
     </div>
   );
 }
@@ -176,15 +216,29 @@ export function AppSidebar() {
           <Link href="/" className="font-heading text-base font-semibold">
             VectorBot
           </Link>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="New chat"
-            disabled={createConversation.isPending}
-            onClick={() => createConversation.mutate(undefined)}
-          >
-            <Plus />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Search chats (⌘K)"
+              onClick={() => {
+                window.dispatchEvent(
+                  new KeyboardEvent("keydown", { key: "k", metaKey: true })
+                );
+              }}
+            >
+              <Search className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="New chat"
+              disabled={createConversation.isPending}
+              onClick={() => createConversation.mutate(undefined)}
+            >
+              <Plus />
+            </Button>
+          </div>
         </div>
       </SidebarHeader>
 
